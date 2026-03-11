@@ -1,0 +1,10 @@
+{
+  "version": "1.0.1",
+  "organization": "Human.tech",
+  "date": "March 2026",
+  "abstract": "Agentic instructions for using the WaaP wallet CLI (waap-cli). Instructs AI agents on how to securely create, manage, sign, and broadcast Ethereum/EVM transactions without handling raw private keys. Covers commands like signup, login, whoami, send-tx, sign-message, sign-typed-data, sign-tx, and EIP-1193 RPC requests.",
+  "references": [
+    "https://waap.xyz",
+    "https://docs.waap.xyz"
+  ]
+}

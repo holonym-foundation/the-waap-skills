@@ -1,0 +1,10 @@
+{
+  "name": "the-waap-skills",
+  "version": "1.0.1",
+  "description": "WaaP wallet CLI skill pack for agent workflows.",
+  "author": {
+    "name": "human.tech"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/holonym-foundation/the-waap-skills"
+}
