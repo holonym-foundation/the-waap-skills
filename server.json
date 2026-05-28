@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.holonym-foundation/waap",
+  "description": "Secure wallets for AI agents with human in the loop. Spend limits, approval flows, and a kill switch enforced at signing. EVM + Sui.",
+  "repository": {
+    "url": "https://github.com/holonym-foundation/the-waap-skills",
+    "source": "github"
+  },
+  "version": "1.0.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@human.tech/waap-cli",
+      "version": "1.0.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "WAAP_EMAIL",
+          "description": "Email for your WaaP agent wallet account",
+          "isRequired": true,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "WAAP_PASSWORD",
+          "description": "Password for your WaaP agent wallet account",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
