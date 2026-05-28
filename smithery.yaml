@@ -1,0 +1,28 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - email
+      - password
+    properties:
+      email:
+        type: string
+        title: WaaP Email
+        description: Email for your WaaP agent wallet account. Sign up at waap.xyz.
+      password:
+        type: string
+        title: WaaP Password
+        description: Password for your WaaP agent wallet account.
+  commandFunction: |-
+    config => ({
+      command: 'npx',
+      args: ['-y', '@human.tech/waap-cli', 'mcp-server'],
+      env: {
+        WAAP_EMAIL: config.email,
+        WAAP_PASSWORD: config.password
+      }
+    })
+  exampleConfig:
+    email: "agent@example.com"
+    password: "YourStrongPassword123!"
