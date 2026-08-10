@@ -112,6 +112,10 @@ all three chains are requested.
 A permission token pre-authorizes a scoped batch of transactions so each one
 does not need an individual confirmation. Request it, then opt in per call.
 
+The wallet mode is not a parameter — the facade decides it. `initWaaP` mints a
+standard-mode token, `initWaaPSquid` mints a Squid one, and a token is not
+redeemable by the other mode. Request it on the facade that will send.
+
 ```ts
 await wallet.requestPermissionToken({
   chain: 'evm:1',

@@ -75,8 +75,8 @@ not use friendly EVM names such as `base`.
 
 ### Standard — default account
 
-Fresh accounts use standard mode (TAP is its protocol name; the
-`--wallet-mode` flag spells it `tap`). `t1` is the secp256k1 signer for EVM and Sui;
+Fresh accounts use standard mode (TAP is its protocol name, which surfaces in
+the `t1`/`t2` key labels). `t1` is the secp256k1 signer for EVM and Sui;
 `t2` is the ed25519 signer for Solana. New accounts never create a 2PC keyshare.
 
 Legacy 2PC accounts convert during `login`, not through a separate command.
@@ -111,7 +111,7 @@ Squid is an optional shared Ika Lite MPC dWallet path, not a fallback standard k
 | Squid signing        | `squid status`, `squid addresses`, `squid init`, `squid refill`, `squid sign-message`, `squid sign-typed-data`, `squid sign-tx`, `squid send-tx` | EIP-712 is Squid `sqd1` / EVM only.                                         |
 | Chain and reads      | `chain get`, deprecated `chain set`, `request <method> [params...]`, `wallet-balance`                                                            | `request` is read-only/account EIP-1193; use direct sign/send commands.     |
 | Policy and approvals | `policy get`, `policy set --daily-spend-limit <usd>`, `2fa status`, `2fa enable`, `2fa disable`                                                  | Policy/2FA mutations are signing operations.                                |
-| Automation scope     | `privilege create`                                                                                                                               | Alias group: `permission-token create`.                                     |
+| Automation scope     | `privilege create`, `squid privilege create`                                                                                                     | The path sets the wallet mode. Alias group: `permission-token create`.      |
 
 The hidden deprecated `balance` command remains an alias for `wallet-balance`.
 
@@ -150,10 +150,20 @@ Create a narrow automation Privilege, then supply the returned encoded value
 only to its matching transaction:
 
 ```bash
+# standard mode
 waap-cli privilege create \
-  --chain evm:84532 --wallet-mode squid --allow 0xRecipient \
+  --chain evm:84532 --allow 0xRecipient \
+  --amount-usd 1 --expiry-seconds 900 --json
+
+# Squid
+waap-cli squid privilege create \
+  --chain evm:84532 --allow 0xRecipient \
   --amount-usd 1 --expiry-seconds 900 --json
 ```
+
+The wallet mode is the command path, not an option — there is no
+`--wallet-mode`. A Privilege minted on one path is not redeemable by the
+other, so mint it on the same path the transaction will use.
 
 `privilege create` binds the CLI origin, chain, wallet mode, recipients, USD
 allowance, and expiry. By default it can allow ordinary threshold findings to
