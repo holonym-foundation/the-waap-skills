@@ -35,6 +35,11 @@ and its `public`, `local`, `optional`, or `signing` authentication boundary.
   secret. Do not print, persist, or reuse it outside its precise scope.
 - Use an isolated `WAAP_CLI_SESSION_DIR` for each agent or CI job. The CLI does
   not load a working-directory `.env` file.
+- `WAAP_CLI_ENV` selects the deployment: `production` (default), `staging`, or
+  `development`. It names a reviewed manifest, never an address. Sessions are
+  not environment-scoped, so change it only together with
+  `WAAP_CLI_SESSION_DIR` or a staging session will overwrite a production one.
+  `SILK_NODE_ENV` is the former name and is still read.
 - Confirm chain, destination, asset, amount, and wallet mode before any
   irreversible transaction. Do not change policy, 2FA, migrate a legacy wallet,
   or initialize Squid without explicit user authority.
@@ -105,7 +110,7 @@ Squid is an optional shared Ika Lite MPC dWallet path, not a fallback standard k
 
 | Area                 | Commands                                                                                                                                         | Notes                                                                       |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Discovery            | `--version`, `commands` / `schema`, `completion <bash                                                                                            | zsh                                                                         | fish>` | `commands --json` is the agent contract. |
+| Discovery            | `--version`, `commands` / `schema`, `completion <bash \| zsh \| fish>`                                                                           | `commands --json` is the agent contract.                                    |
 | Registration         | `signup`, `signup --resume`, `login`, `reset-password`, `logout`, `session-info`, `whoami`                                                       | Signup waits for explicit email approval; reset completes in the wallet UI. |
 | Standard signing     | `sign-message`, `sign-typed-data`, `sign-tx`, `send-tx`                                                                                          | Every operation requires `--chain`; EIP-712 domain chain ID must match it.  |
 | Squid signing        | `squid status`, `squid addresses`, `squid init`, `squid refill`, `squid sign-message`, `squid sign-typed-data`, `squid sign-tx`, `squid send-tx` | EIP-712 is Squid `sqd1` / EVM only.                                         |
@@ -183,8 +188,9 @@ never place it directly in argv or the process environment.
 - For structured inputs use literal `--tx` or stdin with `--tx -`; `@file` is
   intentionally unsupported. Select the chain-specific `--tx-format`:
   EVM `json|hex`, Sui `json|base64`, Solana `json|legacy-message|v0-message`.
-- Do not add `--rpc` to transaction commands. Preparation and broadcast use the
-  authenticated WaaP service.
+- Do not add `--rpc` to transaction commands; they do not accept it, and
+  preparation and broadcast use the authenticated WaaP service. It remains
+  available on the read commands `request`, `wallet-balance`, and `chain set`.
 
 ## Breaking changes and migration notes
 
@@ -197,7 +203,7 @@ never place it directly in argv or the process environment.
 | Deprecated     | `--tx-bytes`, `--tx-json`                                                               | Use `--tx` with `--tx-format`.                                                                                                                                       |
 | Deprecated     | `--privilege <encoded>`, `--permission-token <encoded>`                                 | Use `--privilege-stdin`; the `permission-token` command-group alias remains for compatibility.                                                                       |
 | Deprecated     | `balance`                                                                               | Use `wallet-balance`.                                                                                                                                                |
-| Removed config | Per-service origins, password, Squid behavior, and Privilege env vars                   | Only `WAAP_NODE_ENV` (or the older `SILK_NODE_ENV`) and `WAAP_CLI_SESSION_DIR` are read.                                                                             |
+| Removed config | Per-service origins, password, Squid behavior, and Privilege env vars                   | Only `WAAP_CLI_ENV` (formerly `SILK_NODE_ENV`, still accepted) and `WAAP_CLI_SESSION_DIR` are read.                                                                  |
 | Unsupported    | `--prepare`, raw `@file` transaction inputs                                             | Use the current `--tx` / stdin contract.                                                                                                                             |
 
 Run `commands --json` after upgrading and regenerate stored command templates
