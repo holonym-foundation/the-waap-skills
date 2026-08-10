@@ -1,267 +1,194 @@
 ---
 name: waap-cli
-description: Agentic instructions for using the WaaP wallet CLI (waap-cli). Triggers on tasks involving web3 wallet creation, signing messages, signing typed data, interacting with EVM contracts, sending EVM or Sui transactions, transferring SUI, or checking balances using waap-cli.
+description: Operate a WaaP wallet through @human.tech/waap-cli for email-approved account lifecycle, EVM/Sui/Solana signing and transactions, standard or Ika MPC dWallet (Squid) signing, policy/2FA management, scoped Privileges, balances, and machine-readable automation. Use when a user asks an agent to operate a WaaP wallet through waap-cli.
 license: MIT
 metadata:
   author: human.tech
-  version: '2.0.0'
+  version: "2.0.0"
 ---
 
-# WaaP CLI Skill
+# WaaP CLI
 
-Instructions and guidelines for AI agents using `@human.tech/waap-cli` (`waap-cli`) to perform decentralized actions. Using WaaP, agents can securely sign and execute transactions on **EVM** and **Sui** chains without handling raw private keys.
-
-**Documentation**: For full WaaP platform documentation, SDKs, and advanced integration guides, see [docs.waap.xyz](https://docs.waap.xyz/).
-
-## When to Apply
-
-Use this skill when:
-
-- Instructed to create, signup or login to a WaaP wallet as an agent.
-- Instructed to sign a message or transaction as an agent.
-- Interacting with an EVM-compatible blockchain (Ethereum, Base, Polygon, Arbitrum, etc.).
-- Interacting with the Sui blockchain (mainnet, testnet, devnet).
-- Deploying contracts, sending funds, or transferring tokens on EVM or Sui.
-- Creating a new agent wallet securely.
-
-## Supported Chains
-
-waap-cli supports two chain families, specified via the `--chain` flag:
-
-- **EVM**: `evm:<chainId>` (e.g., `evm:1`, `evm:8453`) or just the chain ID number (e.g., `1`)
-- **Sui**: `sui:<network>` (e.g., `sui:mainnet`, `sui:testnet`, `sui:devnet`, `sui:localnet`)
-
-Set a default chain to avoid passing `--chain` every time:
+Operate the installed `@human.tech/waap-cli` without handling raw private keys.
+Treat its versioned runtime schema as authoritative; do not scrape help or rely
+on this file for flag-level compatibility.
 
 ```bash
-waap-cli chain set evm:1 --rpc https://eth.llamarpc.com
-waap-cli chain set sui:mainnet
-waap-cli chain get   # show current default
+waap-cli --version
+waap-cli commands --json    # alias: waap-cli schema --json
+waap-cli <command> --help
 ```
 
-## Agent-Friendly Output
+`commands --json` is one NDJSON `result` event containing the installed CLI
+version, schema version, every command path, options, aliases, hidden state,
+and its `public`, `local`, `optional`, or `signing` authentication boundary.
 
-`waap-cli` is optimized for autonomous agents. It routes all progress info (like "Loading keyshare...") to `stderr`, keeping `stdout` reserved exclusively for data.
+## Safety and automation rules
 
-### Structured Key-Value (Default)
+- Append `--json` for automation. Read NDJSON from stdout; progress is on stderr.
+- Branch on stable error codes, never free-form messages. Retain
+  `INSUFFICIENT_BALANCE` as a compatibility code even though modern on-chain
+  insufficiency normally reports `INSUFFICIENT_FUNDS`.
+- Use `--password-stdin`; never put passwords in shell history, process
+  arguments, environment variables, or logs.
+- Treat a Privilege (`--privilege-stdin`) as a bearer
+  secret. Do not print, persist, or reuse it outside its precise scope.
+- Use an isolated `WAAP_CLI_SESSION_DIR` for each agent or CI job. The CLI does
+  not load a working-directory `.env` file.
+- Confirm chain, destination, asset, amount, and wallet mode before any
+  irreversible transaction. Do not change policy, 2FA, migrate a legacy wallet,
+  or initialize Squid without explicit user authority.
 
-By default, results are printed as strict `Key: Value` mappings on `stdout`.
+| Exit | Code                    | Agent response                                 |
+| ---: | ----------------------- | ---------------------------------------------- |
+|    0 | —                       | Consume the result.                            |
+|    1 | `UNKNOWN`               | Report the failure; do not invent recovery.    |
+|    2 | `NO_SESSION`            | Authenticate again.                            |
+|    3 | `INVALID_PARAMS`        | Correct the command input.                     |
+|    4 | `POLICY_REJECTED`       | Report the policy/approval decision.           |
+|    5 | `INSUFFICIENT_BALANCE`  | Compatibility failure from an older backend.   |
+|    6 | `INSUFFICIENT_FUNDS`    | Fund the selected on-chain wallet.             |
+|    7 | `NETWORK`               | Retry only a safe, idempotent operation.       |
+|    8 | `TWO_FA_TIMEOUT`        | Start a new approval only with user direction. |
+|    9 | `RPC_PROTOCOL_MISMATCH` | Correct the EVM RPC method or selected chain.  |
+
+## Chain and signer support
+
+| Capability                   |       EVM        |      Sui       |     Solana     |
+| ---------------------------- | :--------------: | :------------: | :------------: |
+| Standard account             |  `t1` secp256k1  | `t1` secp256k1 |  `t2` ed25519  |
+| Standard `sign-message`      |       Yes        |      Yes       |      Yes       |
+| Standard `sign-typed-data`   |   Yes, EIP-712   |       —        |       —        |
+| Standard `sign-tx`/`send-tx` |       Yes        |      Yes       |      Yes       |
+| Squid Ika MPC dWallet        | `sqd1` secp256k1 | `sqd2` ed25519 | `sqd2` ed25519 |
+| Squid `sign-message`         |       Yes        |      Yes       |      Yes       |
+| Squid `sign-typed-data`      |   Yes, EIP-712   |       —        |       —        |
+| Squid `sign-tx` / `send-tx`  |       Yes        |      Yes       |      Yes       |
+| `request` (EIP-1193)         |       Yes        |       —        |       —        |
+
+Use canonical chains: EVM `8453`, `evm:8453`, or `eip155:8453`; Sui
+`sui:<mainnet|testnet|devnet|localnet>`; Solana
+`solana:<mainnet|devnet|testnet>`. `solana:mainnet-beta` aliases mainnet. Do
+not use friendly EVM names such as `base`.
+
+## Wallet modes
+
+### Standard — default account
+
+Fresh accounts use standard mode (TAP is its protocol name; the
+`--wallet-mode` flag spells it `tap`). `t1` is the secp256k1 signer for EVM and Sui;
+`t2` is the ed25519 signer for Solana. New accounts never create a 2PC keyshare.
+
+Legacy 2PC accounts convert during `login`, not through a separate command.
+The CLI asks the key manager what state the account is in; if a legacy key is
+still waiting it decrypts the client share in memory only, and the enclave
+reconstructs and address-verifies the old secp256k1 key before importing it as
+standard `t1`. EVM/Sui addresses are unchanged; `t2` adds a Solana address. Running
+`login` again is safe and is the remedy if signing reports a stale account
+state.
+
+### Squid — Ika MPC dWallet mode
+
+Squid is an optional shared Ika Lite MPC dWallet path, not a fallback standard key:
+
+- `sqd1` is the secp256k1 dWallet for EVM.
+- `sqd2` is the ed25519 dWallet for Sui and Solana.
+- Run `waap-cli squid init` explicitly before Squid signing; send/sign never
+  creates dWallets implicitly.
+- `squid status`, `squid addresses`, and `squid refill` inspect or pre-warm the
+  durable dWallet/presign state.
+- Deployment availability is manifest-gated. Development/staging use reviewed
+  test deployments; production fails closed until its reviewed deployment is
+  available.
+
+## Current command inventory
+
+| Area                 | Commands                                                                                                                                         | Notes                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Discovery            | `--version`, `commands` / `schema`, `completion <bash                                                                                            | zsh                                                                         | fish>` | `commands --json` is the agent contract. |
+| Registration         | `signup`, `signup --resume`, `login`, `reset-password`, `logout`, `session-info`, `whoami`                                                       | Signup waits for explicit email approval; reset completes in the wallet UI. |
+| Standard signing     | `sign-message`, `sign-typed-data`, `sign-tx`, `send-tx`                                                                                          | Every operation requires `--chain`; EIP-712 domain chain ID must match it.  |
+| Squid signing        | `squid status`, `squid addresses`, `squid init`, `squid refill`, `squid sign-message`, `squid sign-typed-data`, `squid sign-tx`, `squid send-tx` | EIP-712 is Squid `sqd1` / EVM only.                                         |
+| Chain and reads      | `chain get`, deprecated `chain set`, `request <method> [params...]`, `wallet-balance`                                                            | `request` is read-only/account EIP-1193; use direct sign/send commands.     |
+| Policy and approvals | `policy get`, `policy set --daily-spend-limit <usd>`, `2fa status`, `2fa enable`, `2fa disable`                                                  | Policy/2FA mutations are signing operations.                                |
+| Automation scope     | `privilege create`                                                                                                                               | Alias group: `permission-token create`.                                     |
+
+The hidden deprecated `balance` command remains an alias for `wallet-balance`.
+
+## Common workflows
+
+Create an email-approved account without exposing a password:
 
 ```bash
-waap-cli whoami
-# stdout:
-# EvmWalletAddress: 0x61C6...
-# SuiWalletAddress: 0xa687...
+printf '%s\n' "$WAAP_PASSWORD" |
+  waap-cli signup --email agent@example.com --name "Agent Wallet" \
+    --password-stdin --json
 ```
 
-### JSON Mode (`--json`)
-
-For programmatic parsing, use the global `--json` flag to return a clean JSON object on `stdout`.
+If interrupted, resume from the same `WAAP_CLI_SESSION_DIR`:
 
 ```bash
-waap-cli whoami --json
-# { "evmWalletAddress": "0x61C6...", "suiWalletAddress": "0xa687..." }
+waap-cli signup --resume --json
 ```
 
-_Note: In JSON mode, even errors are returned as structured JSON: `{"error": "message"}`._
-
-## Agent Wallet Lifecycle
-
-### 1. Account Creation & Login
-
-To create a new wallet for yourself:
+Use a standard-mode transaction:
 
 ```bash
-waap-cli signup --email "youremail+agent007@example.com" --password "StrongPass123!" --name "My Agent"
+waap-cli send-tx --chain evm:8453 --to 0xRecipient --value 0.01 --json
 ```
 
-_Note: Newly created accounts automatically have 2FA disabled, permitting autonomous agent signing._
-
-To log into an existing account (saves a local session to `~/.waap-cli/session.json`):
+Use a Squid EIP-712 signature:
 
 ```bash
-waap-cli login --email "youremail+agent007@example.com" --password "StrongPass123!"
+waap-cli squid sign-typed-data \
+  --chain evm:8453 \
+  --data '{"types":{"Mail":[{"name":"contents","type":"string"}]},"domain":{"name":"WaaP example","version":"1","chainId":8453},"primaryType":"Mail","message":{"contents":"approval"}}' \
+  --json
 ```
 
-### 2. Checking Wallet Address
-
-To retrieve the addresses of the current logged-in agent (shows both EVM and Sui addresses):
+Create a narrow automation Privilege, then supply the returned encoded value
+only to its matching transaction:
 
 ```bash
-waap-cli whoami
+waap-cli privilege create \
+  --chain evm:84532 --wallet-mode squid --allow 0xRecipient \
+  --amount-usd 1 --expiry-seconds 900 --json
 ```
 
-## Signing & Execution Patterns
+`privilege create` binds the CLI origin, chain, wallet mode, recipients, USD
+allowance, and expiry. By default it can allow ordinary threshold findings to
+proceed without another 2FA prompt when PE accepts the scope. Add
+`--require-2fa-for-high-risk-tx` to retain that challenge.
+Pipe the encoded result into a matching transaction with `--privilege-stdin`;
+never place it directly in argv or the process environment.
 
-### Message Signing
+## Transaction inputs and lifecycle
 
-For proving identity or signing off-chain orders.
+- Use `send-tx` / `squid send-tx` to prepare, policy-gate, sign, broadcast, and
+  optionally `--wait` for terminal status.
+- Use `sign-tx` / `squid sign-tx` only for a signed artifact to inspect or hand
+  to an external broadcaster. The CLI does not broadcast saved artifacts.
+- For direct transfers, `--value` is whole ETH/SUI/SOL. Solana SPL transfers use
+  `--mint` and raw token base units.
+- For structured inputs use literal `--tx` or stdin with `--tx -`; `@file` is
+  intentionally unsupported. Select the chain-specific `--tx-format`:
+  EVM `json|hex`, Sui `json|base64`, Solana `json|legacy-message|v0-message`.
+- Do not add `--rpc` to transaction commands. Preparation and broadcast use the
+  authenticated WaaP service.
 
-**EVM (EIP-191):**
+## Breaking changes and migration notes
 
-```bash
-waap-cli sign-message --message "I am an autonomous agent."
-waap-cli sign-message --message 0xdeadbeef
-```
+| Status         | Change                                                                                  | Agent adaptation                                                                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Removed        | `broadcast-tx`                                                                          | Do not save an artifact expecting this CLI to submit it later. Use `send-tx` / `squid send-tx` for CLI broadcast, or an external broadcaster for a handoff artifact. |
+| Removed        | `cancel --msg-hash --authz-kind`                                                        | Do not issue low-level PE cancellation from the CLI. Transaction runners and browser/SDK flows own exact-operation cancellation.                                     |
+| Removed        | Fee, top-up, referral, announcement, `agent-balance`, and related legacy command groups | Do not generate them; inspect `commands --json` before adapting old automation.                                                                                      |
+| Deprecated     | `--chain-id`                                                                            | Use `--chain`.                                                                                                                                                       |
+| Deprecated     | `--tx-bytes`, `--tx-json`                                                               | Use `--tx` with `--tx-format`.                                                                                                                                       |
+| Deprecated     | `--privilege <encoded>`, `--permission-token <encoded>`                                 | Use `--privilege-stdin`; the `permission-token` command-group alias remains for compatibility.                                                                       |
+| Deprecated     | `balance`                                                                               | Use `wallet-balance`.                                                                                                                                                |
+| Removed config | Per-service origins, password, Squid behavior, and Privilege env vars                   | Only `WAAP_NODE_ENV` (or the older `SILK_NODE_ENV`) and `WAAP_CLI_SESSION_DIR` are read.                                                                             |
+| Unsupported    | `--prepare`, raw `@file` transaction inputs                                             | Use the current `--tx` / stdin contract.                                                                                                                             |
 
-**Sui (Blake2b):**
-
-```bash
-waap-cli sign-message --message "Hello Sui" --chain sui:mainnet
-```
-
-### EIP-712 Typed Data (EVM only)
-
-For complex structured signatures (like Permit2 or Seaport):
-
-```bash
-waap-cli sign-typed-data --data '{"types":{...},"domain":{...},"primaryType":"Mail","message":{...}}'
-```
-
-### Direct Transaction Execution (send-tx)
-
-To sign and broadcast a transaction in one step.
-
-**EVM:**
-
-```bash
-# Basic ETH transfer
-waap-cli send-tx \
-  --to 0xRecipientAddress \
-  --value 0.01 \
-  --chain evm:1 \
-  --rpc https://eth.llamarpc.com
-
-# Smart contract interaction (--value defaults to 0 if omitted)
-waap-cli send-tx \
-  --to 0xTokenContract \
-  --data 0xa9059cbb0000... \
-  --chain evm:1 \
-  --rpc https://eth.llamarpc.com
-```
-
-**Sui:**
-
-```bash
-# Simple SUI transfer (value in MIST)
-waap-cli send-tx \
-  --to 0xRecipientSuiAddress \
-  --value 1000 \
-  --chain sui:mainnet
-
-# Pre-built BCS-encoded transaction bytes (Programmable Transaction Blocks)
-# You can generate this using the official MystenLabs `sui` CLI:
-RAW_TX_BYTES=$(sui client ptb \
-  --assign coin @gas \
-  --transfer-objects "[coin]" 0xRecipientSuiAddress \
-  --serialize-unsigned-transaction)
-
-waap-cli send-tx \
-  --tx-bytes "$RAW_TX_BYTES" \
-  --chain sui:mainnet
-
-# JSON-serialized TransactionBlock
-waap-cli send-tx \
-  --tx-json '<json-string>' \
-  --chain sui:testnet
-```
-
-### Offline / Delegated Signing (sign-tx)
-
-If you need the raw signed transaction (to relay via a bundler or specialized endpoint) WITHOUT broadcasting it.
-
-**EVM:**
-
-```bash
-# Provide --value if sending ETH, otherwise it defaults to 0
-waap-cli sign-tx --to 0xTarget --value 0.1 --chain evm:8453 --rpc https://mainnet.base.org
-waap-cli sign-tx --to 0xTokenContract --data 0x123... --chain evm:1
-```
-
-**Sui:**
-
-```bash
-# Simple transfer
-waap-cli sign-tx --to 0xTarget --value 1000 --chain sui:mainnet
-
-# Pre-built transaction bytes (e.g., from PTB `sui client ptb ... --serialize-unsigned-transaction`)
-waap-cli sign-tx --tx-bytes <base64-bcs-bytes> --chain sui:testnet
-
-# JSON-serialized TransactionBlock
-waap-cli sign-tx --tx-json '<json-string>' --chain sui:devnet
-```
-
-### EIP-1193 JSON-RPC Interface (EVM only)
-
-For generic RPC queries, wrapped with wallet authentication if needed:
-
-```bash
-# Fetch ETH balance
-waap-cli request eth_getBalance '["0xYourAddress", "latest"]' --chain-id 1 --rpc https://eth.llamarpc.com
-
-# Get current Chain ID
-waap-cli request eth_chainId
-```
-
-## Policy & 2FA Management
-
-### View Current Policy
-
-```bash
-waap-cli policy get
-# → 2FA Method: EMAIL_AUTHZ, Daily Spend Limit: $100, Min Risk: HighWarn
-```
-
-### Set Daily Spend Limit
-
-Agents can adjust their daily spend limit (requires 2FA approval if enabled):
-
-```bash
-waap-cli policy set --daily-spend-limit 500
-```
-
-Valid range: 0-10,000 USD.
-
-### 2FA Management
-
-```bash
-# View current 2FA method
-waap-cli 2fa status
-
-# Disable 2FA (allows autonomous agent signing)
-waap-cli 2fa disable
-
-# Enable 2FA (recommended for human-controlled wallets)
-waap-cli 2fa enable --email agent@example.com
-waap-cli 2fa enable --phone "+1234567890"
-waap-cli 2fa enable --telegram 7381029636
-waap-cli 2fa enable --wallet 0xHardwareWalletAddress
-```
-
-## RPC
-
-**EVM:** RPC can be passed with `--rpc`. The CLI auto-selects a free public RPC if not set.
-
-**Sui:** The CLI uses `@mysten/sui`'s `getFullnodeUrl()` by default based on the network. Custom RPC can be set via `--rpc` or `chain set`.
-
-## Key Differences: EVM vs Sui
-
-| Feature          | EVM                                                 | Sui                                               |
-| ---------------- | --------------------------------------------------- | ------------------------------------------------- |
-| Chain flag       | `evm:<chainId>` or just `<chainId>`                 | `sui:<network>`                                   |
-| Value unit       | ETH (e.g., `0.01`)                                  | MIST (e.g., `1000`)                               |
-| Tx input options | `--to`, `--data` (optional `--value` defaults to 0) | `--to`/`--value`, OR `--tx-bytes`, OR `--tx-json` |
-| Signature format | Hex                                                 | Base64                                            |
-| Typed data       | `sign-typed-data` (EIP-712)                         | N/A                                               |
-| Legacy tx flag   | `--legacy`                                          | N/A                                               |
-
-## Error Handling & Troubleshooting
-
-1. **"2FA Required" / "Policy engine rejected"**: The account has 2FA enabled. The user needs to disable 2FA for this wallet, OR provide you with an encoded Privilege to bypass it:
-   `waap-cli sign-message --message "Hello" --privilege <token>`
-   (`--permission-token` is also accepted as a deprecated alias.)
-   To disable 2FA: `waap-cli 2fa disable`
-2. **"Not Found" / "Unauthorized"**: The local session might be invalid. Run `waap-cli login` again.
-3. **RPC Errors**: Ensure `--rpc` is set to a valid, responsive endpoint for the requested chain.
-4. **Hex Format**: Ensure `data` payloads for EVM contracts always start with `0x`.
-5. **Sui value unit**: Sui `--value` is in MIST (1 SUI = 1,000,000,000 MIST), not SUI.
+Run `commands --json` after upgrading and regenerate stored command templates
+from its schema. Never auto-upgrade, weaken policy, or broaden a Privilege.

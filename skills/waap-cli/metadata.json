@@ -1,8 +1,8 @@
 {
   "version": "2.0.0",
   "organization": "Human.tech",
-  "date": "July 2026",
-  "abstract": "Agentic instructions for using the WaaP wallet CLI (waap-cli). Instructs AI agents on how to securely create, manage, sign, and broadcast transactions on EVM and Sui chains without handling raw private keys. Covers commands like signup, login, whoami (dual EVM + Sui address), send-tx (EVM transfers, Sui MIST transfers, and Sui Programmable Transaction Blocks), sign-message, sign-typed-data, sign-tx, policy/2FA, and EIP-1193 RPC requests.",
+  "date": "August 2026",
+  "abstract": "Operate a WaaP wallet through @human.tech/waap-cli for email-approved account lifecycle, EVM/Sui/Solana signing and transactions, standard or Ika MPC dWallet (Squid) signing, policy/2FA management, scoped Privileges, balances, and machine-readable automation. Use when a user asks an agent to operate a WaaP wallet through waap-cli.",
   "references": [
     "https://waap.xyz",
     "https://docs.waap.xyz"
