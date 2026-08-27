@@ -1,0 +1,10 @@
+{
+  "version": "2.3.0",
+  "organization": "Human.tech",
+  "date": "August 2026",
+  "abstract": "Integrate the WaaP wallet into a browser dApp with @human.tech/waap-sdk — EIP-1193 on EVM, Wallet Standard on Sui and Solana, Squid multichain accounts, permission tokens, and iframe lifecycle. Use when writing or reviewing browser dApp code that connects to a WaaP wallet. For headless agents and scripts, use the waap-cli skill instead.",
+  "references": [
+    "https://waap.xyz",
+    "https://docs.waap.human.tech"
+  ]
+}
