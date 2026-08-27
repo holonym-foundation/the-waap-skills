@@ -1,0 +1,76 @@
+# Keep the published skills in step with the packages they describe.
+#
+# This pulls from npm rather than being pushed to from the source repository,
+# which is what lets it run on this repo's own GITHUB_TOKEN — no cross-repo
+# credential exists, and none is needed. It also means a skill can only ever
+# describe a build that is actually installable.
+#
+# It opens a pull request instead of committing to main. When the source
+# repository is ahead of npm, that difference shows up as a reviewable diff
+# rather than as a silent revert of work that has not been released yet.
+name: Sync skills from npm
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-skills
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BRANCH: chore/sync-skills-from-npm
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+
+      - name: Render the skills from the published packages
+        run: node scripts/render-skills.mjs .
+
+      - name: Open a pull request when it changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Stage before testing for changes: a newly added skill arrives as an
+          # untracked directory, which `git diff` alone does not see.
+          git add -A
+          if git diff --cached --quiet; then
+            echo "the published skills are already in sync"
+            exit 0
+          fi
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git commit -m "chore: sync agent skills from the published packages"
+          git push --force origin "$BRANCH"
+
+          if gh pr view "$BRANCH" --json state --jq .state 2>/dev/null | grep -q OPEN; then
+            echo "refreshed the open pull request for $BRANCH"
+            exit 0
+          fi
+
+          BODY=$(printf '%s\n' \
+            'Rendered by `.github/workflows/sync-skills.yaml` from the tarballs that `latest` resolves to on npm.' \
+            '' \
+            'Review the diff before merging. A removal here usually means the source repository carries a change that has not been released yet — release it rather than merging the removal.')
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: sync agent skills from the published packages" \
+            --body "$BODY"
