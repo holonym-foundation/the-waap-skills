@@ -38,6 +38,12 @@ npx skills add holonym-foundation/the-waap-skills --skill waap-cli
         └── metadata.json
 ```
 
+## Keeping this in sync
+
+`scripts/render-skills.mjs` renders each skill from the `.agent/SKILL.md` inside its published npm tarball. `.github/workflows/sync-skills.yaml` runs it weekly and opens a pull request when the published packages have moved.
+
+Edit a skill in its own package and release it; the render follows. Changes made directly here are overwritten on the next run.
+
 ## Documentation
 
 [docs.waap.human.tech](https://docs.waap.human.tech) — see [For Agents → Claude Code](https://docs.waap.human.tech/for-agents/frameworks/claude-code) for the install path and worked examples.
