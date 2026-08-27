@@ -1,7 +1,7 @@
 {
   "name": "the-waap-skills",
-  "version": "2.0.0",
-  "description": "WaaP wallet CLI skill pack for agent workflows — EVM and Sui.",
+  "version": "2.1.0",
+  "description": "WaaP wallet skill pack for agent workflows — waap-cli for headless agents and waap-sdk for browser dApps, across EVM, Sui and Solana.",
   "author": {
     "name": "human.tech"
   },
