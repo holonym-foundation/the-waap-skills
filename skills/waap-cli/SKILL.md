@@ -117,7 +117,6 @@ Squid is an optional shared Ika Lite MPC dWallet path, not a fallback standard k
 | Chain and reads      | `chain get`, deprecated `chain set`, `request <method> [params...]`, `wallet-balance`                                                            | `request` is read-only/account EIP-1193; use direct sign/send commands.     |
 | Policy and approvals | `policy get`, `policy set --daily-spend-limit <usd>`, `2fa status`, `2fa enable`, `2fa disable`                                                  | Policy/2FA mutations are signing operations.                                |
 | Automation scope     | `privilege create`, `squid privilege create`                                                                                                     | The path sets the wallet mode. Alias group: `permission-token create`.      |
-| Gas tank             | `gastank balance`, `gastank topup info`, `gastank topup confirm`, `gastank topup sync`                                                           | Deposit on-chain first, then credit it. All are signing operations.        |
 
 The hidden deprecated `balance` command remains an alias for `wallet-balance`.
 
@@ -178,18 +177,6 @@ proceed without another 2FA prompt when PE accepts the scope. Add
 Pipe the encoded result into a matching transaction with `--privilege-stdin`;
 never place it directly in argv or the process environment.
 
-Inspect the gas tank, and credit a deposit that is already on-chain:
-
-```bash
-waap-cli gastank balance --json
-waap-cli gastank topup info --json
-waap-cli gastank topup confirm --chain evm:8453 --tx-hash 0xDeposit --json
-```
-
-`gastank topup` never moves funds. Send the deposit yourself on a chain and
-asset that `topup info` lists, then credit it with `topup confirm`, or run
-`topup sync` to credit deposits that were sent but never confirmed.
-
 ## Transaction inputs and lifecycle
 
 - Use `send-tx` / `squid send-tx` to prepare, policy-gate, sign, broadcast, and
@@ -211,7 +198,7 @@ asset that `topup info` lists, then credit it with `topup confirm`, or run
 | -------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Removed        | `broadcast-tx`                                                                          | Do not save an artifact expecting this CLI to submit it later. Use `send-tx` / `squid send-tx` for CLI broadcast, or an external broadcaster for a handoff artifact. |
 | Removed        | `cancel --msg-hash --authz-kind`                                                        | Do not issue low-level PE cancellation from the CLI. Transaction runners and browser/SDK flows own exact-operation cancellation.                                     |
-| Removed        | Fee, referral, announcement, `agent-balance`, and the legacy top-up command groups      | Do not generate them; inspect `commands --json` before adapting old automation. Gas-tank deposits now live under `gastank topup`, which is not the removed group.    |
+| Removed        | Fee, top-up, referral, announcement, `agent-balance`, and related legacy command groups | Do not generate them; inspect `commands --json` before adapting old automation.                                                                                      |
 | Deprecated     | `--chain-id`                                                                            | Use `--chain`.                                                                                                                                                       |
 | Deprecated     | `--tx-bytes`, `--tx-json`                                                               | Use `--tx` with `--tx-format`.                                                                                                                                       |
 | Deprecated     | `--privilege <encoded>`, `--permission-token <encoded>`                                 | Use `--privilege-stdin`; the `permission-token` command-group alias remains for compatibility.                                                                       |
