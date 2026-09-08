@@ -24,7 +24,13 @@ import { tmpdir } from 'node:os'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-/** Every package that ships an agent skill. Add a row to publish a new one. */
+/**
+ * Every package that ships an agent skill. Add a row to publish a new one.
+ *
+ * Only these slugs are rendered. Any other directory under skills/ is an
+ * authored recipe (a job an agent runs through the CLI, not a package
+ * reference) and is maintained by hand; this script never writes or removes it.
+ */
 const PACKAGES = [
   { name: '@human.tech/waap-cli', slug: 'waap-cli' },
   { name: '@human.tech/waap-sdk', slug: 'waap-sdk' }
