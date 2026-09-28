@@ -4,7 +4,7 @@ description: Integrate the WaaP wallet into a browser dApp with @human.tech/waap
 license: MIT
 metadata:
   author: human.tech
-  version: "2.3.0"
+  version: "2.4.0"
 ---
 
 # WaaP SDK
