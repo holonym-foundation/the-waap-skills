@@ -4,7 +4,7 @@ description: Integrate the WaaP wallet into a browser dApp with @human.tech/waap
 license: MIT
 metadata:
   author: human.tech
-  version: "2.3.0"
+  version: "2.4.2"
 ---
 
 # WaaP SDK
@@ -58,17 +58,17 @@ caller-controlled input: that origin governs iframe creation, every
 
 ## Chain and capability support
 
-| Capability                  | EVM                    | Sui                         | Solana                   |
-| --------------------------- | ---------------------- | --------------------------- | ------------------------ |
-| Interface                   | EIP-1193               | Wallet Standard             | Wallet Standard          |
-| Standard signer             | `t1` secp256k1         | `t1` secp256k1              | `t2` ed25519             |
-| Squid dWallet               | `sqd1` secp256k1       | `sqd2` ed25519              | `sqd2` ed25519           |
-| Message signing             | `personal_sign`        | `signPersonalMessage`       | `signMessage`            |
-| Typed data                  | `eth_signTypedData_v4` | —                           | —                        |
-| Sign only                   | `eth_signTransaction`  | `signTransaction`           | `signTransaction`        |
-| Sign and submit             | `eth_sendTransaction`  | `signAndExecuteTransaction` | `signAndSendTransaction` |
-| Permission token (`withPT`) | sign/send transaction  | sign / sign-and-execute     | sign / sign-and-send     |
-| Batch signing               | —                      | —                           | not implemented          |
+| Capability                  | EVM                    | Sui                         | Solana                           |
+| --------------------------- | ---------------------- | --------------------------- | -------------------------------- |
+| Interface                   | EIP-1193               | Wallet Standard             | Wallet Standard                  |
+| Standard signer             | `t1` secp256k1         | `t1` secp256k1              | `t2` ed25519                     |
+| Squid dWallet               | `sqd1` secp256k1       | `sqd2` ed25519              | `sqd2` ed25519                   |
+| Message signing             | `personal_sign`        | `signPersonalMessage`       | `signMessage`                    |
+| Typed data                  | `eth_signTypedData_v4` | —                           | —                                |
+| Sign only                   | `eth_signTransaction`  | `signTransaction`           | `signTransaction`                |
+| Sign and submit             | `eth_sendTransaction`  | `signAndExecuteTransaction` | `signAndSendTransaction`         |
+| Permission token (`withPT`) | sign/send transaction  | sign / sign-and-execute     | sign / sign-and-send             |
+| Multiple signing inputs     | —                      | —                           | sequential via standard features |
 
 Chain identifiers are `sui:<mainnet\|testnet\|devnet\|localnet>` and
 `solana:<mainnet\|devnet\|testnet>`. Permission-token requests use
@@ -85,8 +85,23 @@ Chain identifiers are `sui:<mainnet\|testnet\|devnet\|localnet>` and
 - `preload()` completes non-interactive setup. It never opens wallet UI and
   never creates a Squid account.
 - Re-target an environment by navigating, not by swapping in place. The wallet
-  origin is fixed at initialization and Wallet Standard registers providers
-  globally with no clean unregister.
+  origin is fixed at initialization. Standalone Solana registration is removed
+  by `destroy()`; teardown the old initializer before creating another.
+
+## Solana wallet-adapter consumers
+
+- `initWaaP({ chain: 'solana' })` automatically registers the standalone wallet.
+  Initialize once in a browser effect and call `destroy()` in its cleanup.
+- Modern `@solana/wallet-adapter-react` discovers Wallet Standard wallets. Use
+  its normal `WalletProvider`, picker, and signing methods; no WaaP-specific
+  adapter package or manually registered duplicate is needed.
+- Explicit connect restores a current session or opens login. Silent connect
+  probes the session without a modal and returns empty accounts when absent.
+- The generic adapter supplies `signAllTransactions`. Standard feature inputs
+  run sequentially with per-request approval policy; there is no atomic batch
+  or single Squid roundtrip, and no direct facade `signAllTransactions` helper.
+- This standalone lifecycle does not replace composite Squid's explicit
+  `session.login()` and `squid.onboard()` flow below.
 
 ## Squid accounts
 
